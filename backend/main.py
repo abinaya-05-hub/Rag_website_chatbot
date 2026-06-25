@@ -1,9 +1,12 @@
-@app.get("/scrape")
-def scrape(url: str):
 
-    pages = scrape_website(url)
+from rag import ask_question
+
+
+@app.get("/ask")
+def ask(question: str):
+
+    answer = ask_question(question)
 
     return {
-        "pages_scraped": len(pages),
-        "sample": pages[0][:1000] if pages else ""
+        "answer": answer
     }
