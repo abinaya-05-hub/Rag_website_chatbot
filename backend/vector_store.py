@@ -16,6 +16,7 @@ def get_collection(url):
     )
 
     collection_name = f"collection_{collection_name}"
+    
 
     return client.get_or_create_collection(
         name=collection_name
