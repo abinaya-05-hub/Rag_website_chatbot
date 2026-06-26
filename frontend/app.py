@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-
+API_URL="https://ragwebsitechatbot-production.up.railway.app"
 # ---------------------------------------
 # PAGE CONFIG
 # ---------------------------------------
@@ -48,7 +48,8 @@ with st.sidebar:
             with st.spinner("Indexing website..."):
 
                 response = requests.post(
-                    "http://127.0.0.1:8000/index",
+                    f"{API_URL}/index",
+
                     params={
                         "url": url
                     }
@@ -123,7 +124,7 @@ if question:
         with st.spinner("Thinking..."):
 
             response = requests.get(
-                "http://127.0.0.1:8000/ask",
+                f"{API_URL}/ask",
                 params={
                     "url": st.session_state.url,
                     "question": question
