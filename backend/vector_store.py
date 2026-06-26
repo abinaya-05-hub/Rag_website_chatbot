@@ -1,3 +1,5 @@
+import hashlib
+
 import chromadb
 import uuid
 
@@ -6,15 +8,12 @@ client = chromadb.PersistentClient(path="./chromadb_data")
 
 def get_collection(url):
 
-    collection_name = (
-        url.replace("https://", "")
-           .replace("http://", "")
-           .replace("/", "_")
-           .replace(".", "_")
-    )
+    url_hash = hashlib.md5(url.encode()).hexdigest()
+
+    collection_name = f"website_{url_hash}"
 
     return client.get_or_create_collection(
-        name=f"collection_{collection_name}"
+        name=collection_name
     )
 
 

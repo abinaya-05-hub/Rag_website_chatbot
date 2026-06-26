@@ -1,97 +1,151 @@
 import streamlit as st
 import requests
 
+# ---------------------------------------
+# PAGE CONFIG
+# ---------------------------------------
+
 st.set_page_config(
     page_title="RAG Website Chatbot",
-    page_icon="🤖"
+    page_icon="🤖",
+    layout="wide"
 )
 
-st.title("🤖 RAG Website Chatbot")
-st.write("Chat with any website using RAG.")
+# ---------------------------------------
+# SESSION STATE
+# ---------------------------------------
 
-# ----------------------------
-# WEBSITE URL
-# ----------------------------
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-url = st.text_input(
-    "Enter Website URL",
-    placeholder="https://example.com"
-)
+if "website_indexed" not in st.session_state:
+    st.session_state.website_indexed = False
 
-# ----------------------------
-# INDEX WEBSITE
-# ----------------------------
+if "url" not in st.session_state:
+    st.session_state.url = ""
 
-if st.button("Index Website"):
+# ---------------------------------------
+# SIDEBAR
+# ---------------------------------------
 
-    if not url:
-        st.warning("Please enter a website URL.")
+with st.sidebar:
 
-    else:
+    st.title("🌐 Website Indexer")
 
-        with st.spinner("Indexing Website..."):
+    url = st.text_input(
+        "Enter Website URL",
+        value=st.session_state.url,
+        placeholder="https://python.org"
+    )
 
-            response = requests.post(
-                "http://127.0.0.1:8000/index",
-                params={
-                    "url": url
-                }
-            )
+    if st.button("📥 Index Website"):
 
-        if response.status_code == 200:
-
-            result = response.json()
-
-            st.success(result["message"])
-            st.write(f"Pages Indexed : {result['pages']}")
-            st.write(f"Chunks Created : {result['chunks']}")
+        if url == "":
+            st.warning("Please enter a website URL.")
 
         else:
 
-            st.error("Indexing Failed")
-            st.write(response.text)
+            with st.spinner("Indexing website..."):
 
-# ----------------------------
-# ASK QUESTION
-# ----------------------------
+                response = requests.post(
+                    "http://127.0.0.1:8000/index",
+                    params={
+                        "url": url
+                    }
+                )
+
+            if response.status_code == 200:
+
+                result = response.json()
+
+                st.session_state.website_indexed = True
+                st.session_state.url = url
+
+                st.success("✅ Website Indexed")
+
+                st.write(f"📄 Pages : {result['pages']}")
+                st.write(f"🧩 Chunks : {result['chunks']}")
+
+            else:
+
+                st.error("Indexing Failed")
+                st.write(response.text)
+
+# ---------------------------------------
+# MAIN PAGE
+# ---------------------------------------
+
+st.title("🤖 RAG Website Chatbot")
+
+st.write(
+    "Ask questions about any indexed website using Retrieval-Augmented Generation (RAG)."
+)
 
 st.divider()
 
-question = st.text_input(
-    "Ask a Question"
-)
+# ---------------------------------------
+# SHOW CHAT HISTORY
+# ---------------------------------------
 
-if st.button("Ask"):
+for message in st.session_state.messages:
 
-    if not url:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-        st.warning("Please enter the website URL first.")
+# ---------------------------------------
+# CHAT INPUT
+# ---------------------------------------
 
-    elif not question:
+question = st.chat_input("Ask anything about the indexed website...")
 
-        st.warning("Please enter a question.")
+if question:
+
+    if not st.session_state.website_indexed:
+
+        st.warning("⚠ Please index a website first.")
 
     else:
 
-        with st.spinner("Generating Answer..."):
+        # Show user message
+
+        st.session_state.messages.append(
+            {
+                "role": "user",
+                "content": question
+            }
+        )
+
+        with st.chat_message("user"):
+            st.markdown(question)
+
+        # Ask backend
+
+        with st.spinner("Thinking..."):
 
             response = requests.get(
                 "http://127.0.0.1:8000/ask",
                 params={
-                    "url": url,
+                    "url": st.session_state.url,
                     "question": question
                 }
             )
 
         if response.status_code == 200:
 
-            result = response.json()
+            answer = response.json()["answer"]
 
-            st.subheader("Answer")
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": answer
+                }
+            )
 
-            st.success(result["answer"])
+            with st.chat_message("assistant"):
+                st.markdown(answer)
 
         else:
 
-            st.error("Failed to generate answer")
-            st.write(response.text)
+            st.error("Backend Error")
+
+            st.code(response.text)

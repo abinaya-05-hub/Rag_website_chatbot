@@ -1,62 +1,60 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
-from collections import deque
 
 
-def scrape_website(start_url, max_pages=10):
+def scrape_website(base_url):
 
     visited = set()
-    queue = deque([start_url])
     pages = []
 
-    domain = urlparse(start_url).netloc
+    try:
 
-    while queue and len(visited) < max_pages:
+        response = requests.get(base_url, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
 
-        url = queue.popleft()
+        visited.add(base_url)
 
-        if url in visited:
-            continue
+        text = soup.get_text(separator=" ", strip=True)
 
-        visited.add(url)
+        pages.append({
+            "url": base_url,
+            "content": text
+        })
 
-        try:
-            response = requests.get(url, timeout=10)
+        links = []
 
-            if response.status_code != 200:
-                continue
+        for link in soup.find_all("a", href=True):
 
-            soup = BeautifulSoup(response.text, "html.parser")
+            full_url = urljoin(base_url, link["href"])
 
-            # Remove unnecessary tags
-            for tag in soup(["script", "style", "noscript"]):
-                tag.decompose()
+            if urlparse(full_url).netloc == urlparse(base_url).netloc:
 
-            text = soup.get_text(separator=" ", strip=True)
+                if full_url not in visited:
+                    links.append(full_url)
 
-            if text:
+        # Limit crawling to first 10 internal pages
+        for link in links[:10]:
+
+            try:
+
+                response = requests.get(link, timeout=10)
+
+                soup = BeautifulSoup(response.text, "html.parser")
+
+                text = soup.get_text(separator=" ", strip=True)
+
                 pages.append({
-                    "url": url,
+                    "url": link,
                     "content": text
                 })
 
-            # Find all links
-            for link in soup.find_all("a", href=True):
+                visited.add(link)
 
-                absolute_url = urljoin(url, link["href"])
+            except:
+                pass
 
-                parsed = urlparse(absolute_url)
-
-                # Only crawl same website
-                if parsed.netloc == domain:
-
-                    clean_url = parsed.scheme + "://" + parsed.netloc + parsed.path
-
-                    if clean_url not in visited:
-                        queue.append(clean_url)
-
-        except Exception as e:
-            print("Error:", e)
+    except Exception as e:
+        print(e)
 
     return pages
