@@ -1,53 +1,62 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
+from collections import deque
 
-visited = set()
 
-def scrape_website(url, max_pages=10):
+def scrape_website(start_url, max_pages=10):
 
-    pages_content = []
+    visited = set()
+    queue = deque([start_url])
+    pages = []
 
-    def crawl(current_url):
+    domain = urlparse(start_url).netloc
 
-        if len(visited) >= max_pages:
-            return
+    while queue and len(visited) < max_pages:
 
-        if current_url in visited:
-            return
+        url = queue.popleft()
 
-        visited.add(current_url)
+        if url in visited:
+            continue
+
+        visited.add(url)
 
         try:
-            response = requests.get(current_url, timeout=10)
+            response = requests.get(url, timeout=10)
 
-            soup = BeautifulSoup(
-                response.text,
-                "html.parser"
-            )
+            if response.status_code != 200:
+                continue
 
-            text = soup.get_text(
-                separator=" ",
-                strip=True
-            )
+            soup = BeautifulSoup(response.text, "html.parser")
 
-            pages_content.append(text)
+            # Remove unnecessary tags
+            for tag in soup(["script", "style", "noscript"]):
+                tag.decompose()
 
-            base_domain = urlparse(url).netloc
+            text = soup.get_text(separator=" ", strip=True)
 
+            if text:
+                pages.append({
+                    "url": url,
+                    "content": text
+                })
+
+            # Find all links
             for link in soup.find_all("a", href=True):
 
-                next_url = urljoin(
-                    current_url,
-                    link["href"]
-                )
+                absolute_url = urljoin(url, link["href"])
 
-                if urlparse(next_url).netloc == base_domain:
-                    crawl(next_url)
+                parsed = urlparse(absolute_url)
+
+                # Only crawl same website
+                if parsed.netloc == domain:
+
+                    clean_url = parsed.scheme + "://" + parsed.netloc + parsed.path
+
+                    if clean_url not in visited:
+                        queue.append(clean_url)
 
         except Exception as e:
-            print(e)
+            print("Error:", e)
 
-    crawl(url)
-
-    return pages_content
+    return pages

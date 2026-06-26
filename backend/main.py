@@ -2,6 +2,10 @@ from fastapi import FastAPI
 from scraper import scrape_website
 from indexer import index_website
 from rag import ask_question
+from fastapi import HTTPException
+import traceback
+from vector_store import get_collection
+
 
 app = FastAPI()
 
@@ -27,25 +31,37 @@ def scrape(url: str):
 @app.post("/index")
 def index(url: str):
 
-    result = index_website(url)
+    try:
 
-    return {
-        "message": "Website indexed successfully",
-        **result
-    }
+        result = index_website(url)
 
+        return {
+            "message": "Website indexed successfully",
+            **result
+        }
+
+    except Exception as e:
+
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 @app.get("/ask")
-def ask(
-    url: str,
-    question: str
-):
+def ask(url: str, question: str):
+    try:
+        answer = ask_question(url, question)
+        return {"answer": answer}
+    except Exception as e:
+        traceback.print_exc()   # <-- This prints the full error
+        raise HTTPException(status_code=500, detail=str(e))
+@app.get("/debug")
+def debug(url: str):
 
-    answer = ask_question(
-        url,
-        question
-    )
+    collection = get_collection(url)
 
     return {
-        "answer": answer
+        "count": collection.count()
     }
