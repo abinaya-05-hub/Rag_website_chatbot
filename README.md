@@ -184,7 +184,7 @@ Hosted on **Streamlit Community Cloud**
 
 ## 📸 Screenshots
 
-Add screenshots of:
+
 
 * Home Page
 ![alt text](image.png)
