@@ -187,10 +187,7 @@ Hosted on **Streamlit Community Cloud**
 Add screenshots of:
 
 * Home Page
-* Website Indexing
-* Chat Interface
-* Deployment
-* Swagger API
+![alt text](image.png)
 
 ---
 
